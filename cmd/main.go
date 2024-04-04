@@ -16,6 +16,6 @@ func main() {
 	routes.RegisterPlacesAppRoutes(r)
 
 	http.Handle("/", r)
-	log.Fatal(http.ListenAndServe("localhost:9201", r))
+	log.Fatal(http.ListenAndServe("localhost:9200", r))
 	log.Println("listening")
 }

@@ -5,10 +5,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 
 	"PlacesApp/internal"
 
@@ -82,47 +80,6 @@ func (t *Place) Index(ctx context.Context, place models.Place) error {
 
 	io.Copy(ioutil.Discard, resp.Body)
 
-	return nil
-}
-
-func ParseBody(r *http.Request, x interface{}) {
-	if body, err := ioutil.ReadAll(r.Body); err == nil {
-		if err := json.Unmarshal([]byte(body), x); err != nil {
-			return
-		}
-	}
-}
-
-func Index(w http.ResponseWriter, r *http.Request, ctx context.Context) error {
-	place := &models.Place{}
-	ParseBody(r, place)
-	// Obtain a Tracer from the global TracerProvider
-	tracer := otel.Tracer("PlacesApp")
-
-	// Start a new span
-	ctx, span := tracer.Start(ctx, "Place.Index")
-	defer span.End()
-
-	body := indexedPlace{
-		ID:       place.ID,
-		Name:     place.Name,
-		Address:  place.Address,
-		Phone:    place.Phone,
-		Location: GeoPoint(place.Location),
-	}
-
-	var buf bytes.Buffer
-
-	_ = json.NewEncoder(&buf).Encode(body) // XXX: error omitted
-
-	req := esapi.IndexRequest{
-		Index:      "t.index",
-		Body:       &buf,
-		DocumentID: place.ID,
-		Refresh:    "true",
-	}
-
-	fmt.Println(req)
 	return nil
 }
 

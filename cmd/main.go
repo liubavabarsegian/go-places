@@ -1,21 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
-
-	"PlacesApp/internal/routes"
-
-	"github.com/gorilla/mux"
+	"PlacesApp/config"
+	"context"
 )
 
 func main() {
-	fmt.Println("HELLO")
-	r := mux.NewRouter()
-	routes.RegisterPlacesAppRoutes(r)
-
-	http.Handle("/", r)
-	log.Fatal(http.ListenAndServe("localhost:9200", r))
-	log.Println("listening")
+	ctx := context.Background()
+	ctx = config.ConnectWithElasticSearch(ctx)
+	config.ConfigServer(ctx)
 }

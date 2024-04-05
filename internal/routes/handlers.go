@@ -2,7 +2,6 @@ package routes
 
 import (
 	"PlacesApp/internal/db/models"
-	"PlacesApp/internal/repository"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -30,49 +29,42 @@ func GetPlaces(w http.ResponseWriter, r *http.Request) {
 
 func PostPlace(w http.ResponseWriter, r *http.Request) {
 	var place models.Place
-	var place2 *repository.Place
 
 	err := json.NewDecoder(r.Body).Decode(&place)
 	if err != nil {
-		fmt.Println(err)
+		http.Error(w, "Error decoding request body", http.StatusBadRequest)
+		return
 	}
 
-	// Initialize the Elasticsearch client
-	// This is a placeholder. You need to replace this with actual client initialization logic.
-	// For example:
+	if err := place.Validate(); err != nil {
+		http.Error(w, "Invalid place data", http.StatusBadRequest)
+		return
+	}
+
 	cfg := elasticsearch.Config{
 		Addresses: []string{
-			"http://localhost:9200", // Specify the Elasticsearch server address
+			"http://localhost:9201",
 		},
 	}
 	client, err := elasticsearch.NewClient(cfg)
 	if err != nil {
-		fmt.Println(err)
-		// Consider sending an error response here
+		http.Error(w, "Error setting up Elasticsearch client", http.StatusInternalServerError)
 		return
 	}
 
-	// Initialize place2 using the NewPlace function
-	// Replace 'client' with the actual Elasticsearch client
-	place2 = repository.NewPlace(client)
+	place = *models.NewPlace(client)
+	// if place == nil {
+	// 	http.Error(w, "Error creating IndexedPlace", http.StatusInternalServerError)
+	// 	return
+	// }
 
-	// Check if place2 is nil before using it
-	if place2 == nil {
-		fmt.Println("place2 is nil")
-		// Consider sending an error response here
-		return
-	}
-
-	// Now you can safely call the Index method
-	err = place2.Index(context.Background(), place)
+	err = place.Index(context.Background(), place)
 	if err != nil {
-		fmt.Println(err)
-		// Consider sending an error response here
+		http.Error(w, "Error indexing place", http.StatusInternalServerError)
 		return
 	}
-
-	place2.Index(context.Background(), place)
 
 	models.Places = append(models.Places, place)
-	fmt.Println("post people")
+
+	w.WriteHeader(http.StatusCreated)
 }

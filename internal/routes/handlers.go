@@ -10,8 +10,16 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 )
 
+type ClientKey struct{}
+
 func PlacesHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("HELLOOOOOO")
+	// client, ok := r.Context().Value(ClientKey{}).(*elasticsearch.Client)
+	// if !ok {
+	// 	http.Error(w, "Elasticsearch client not found in context", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// fmt.Println("places handler", client.API)
 	switch r.Method {
 	case http.MethodGet:
 		GetPlaces(w, r)
@@ -24,10 +32,11 @@ func PlacesHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetPlaces(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(models.Places)
-	fmt.Println("get people")
+	fmt.Println("get places")
 }
 
 func PostPlace(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("post places")
 	var place models.Place
 
 	err := json.NewDecoder(r.Body).Decode(&place)
@@ -41,16 +50,15 @@ func PostPlace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := elasticsearch.Config{
-		Addresses: []string{
-			"http://localhost:9201",
-		},
-	}
-	client, err := elasticsearch.NewClient(cfg)
-	if err != nil {
-		http.Error(w, "Error setting up Elasticsearch client", http.StatusInternalServerError)
+	client, ok := r.Context().Value(ClientKey{}).(*elasticsearch.Client)
+	if !ok {
+		http.Error(w, "Elasticsearch client not found in context 2", http.StatusInternalServerError)
 		return
 	}
+	// if err != nil {
+	// 	http.Error(w, "Error setting up Elasticsearch client", http.StatusInternalServerError)
+	// 	return
+	// }
 
 	place = *models.NewPlace(client)
 	// if place == nil {

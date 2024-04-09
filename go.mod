@@ -3,8 +3,10 @@ module PlacesApp
 go 1.22
 
 require (
+	github.com/dustin/go-humanize v1.0.1
 	github.com/elastic/go-elasticsearch/v8 v8.13.0
 	github.com/gorilla/mux v1.8.1
+	github.com/pkg/errors v0.9.1
 	go.opentelemetry.io/otel v1.24.0
 )
 

@@ -2,22 +2,17 @@ package config
 
 import (
 	"PlacesApp/internal/routes"
-	"context"
-	"log"
+	"fmt"
 	"net/http"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gorilla/mux"
 )
 
-type ClientKey struct{}
-
-var CTX context.Context
-
-func ConnectWithElasticSearch(ctx context.Context) context.Context {
+func ConnectWithElasticSearch() *elasticsearch.Client {
 	es_config := elasticsearch.Config{
 		Addresses: []string{
-			"http://localhost:9201",
+			"http://elasticsearch:9200",
 		},
 	}
 	newClient, err := elasticsearch.NewClient(es_config)
@@ -25,12 +20,13 @@ func ConnectWithElasticSearch(ctx context.Context) context.Context {
 		panic(err)
 	}
 
-	return context.WithValue(ctx, ClientKey{}, newClient)
+	return newClient
 }
 
-func ConfigServer(ctx context.Context) {
-	CTX = ctx
+func ConfigServer() {
 	r := mux.NewRouter()
 	routes.RegisterPlacesAppRoutes(r)
-	log.Fatal(http.ListenAndServe("localhost:9200", r))
+	http.Handle("/", r)
+	fmt.Println("config")
+	http.ListenAndServe("127.0.0.1:8888", r)
 }

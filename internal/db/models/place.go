@@ -1,6 +1,7 @@
 package models
 
 import (
+	// "PlacesApp/internal"
 	"PlacesApp/internal"
 	"bytes"
 	"context"
@@ -20,7 +21,7 @@ const (
 )
 
 type Place struct {
-	ID        string   `json:"id"`
+	ID        int      `json:"id"`
 	Name      string   `json:"name"`
 	Address   string   `json:"address"`
 	Phone     string   `json:"phone"`
@@ -31,14 +32,14 @@ type Place struct {
 
 type GeoPoint struct {
 	Longitude float64 `json:"lon"`
-	Latitide  float64 `json:"lat"`
+	Latitude  float64 `json:"lat"`
 }
 
 var Places []Place
 
 func (place *Place) Validate() error {
-	place_id, _ := strconv.Atoi(place.ID)
-	if place_id < 1 {
+	// place_id, _ := strconv.Atoi(place.ID)
+	if place.ID < 1 {
 		return errors.New(ErrInvalidPlaceID)
 	}
 	return nil
@@ -51,7 +52,7 @@ func NewPlace(client *elasticsearch.Client) *Place {
 	}
 }
 
-// Index creates or updates a task in an index.
+// Index creates or updates a place in an index.
 func (t *Place) Index(ctx context.Context, place Place) error {
 	tracer := otel.Tracer("PlacesApp")
 	ctx, span := tracer.Start(ctx, "Place.Index")
@@ -71,7 +72,7 @@ func (t *Place) Index(ctx context.Context, place Place) error {
 	req := esapi.IndexRequest{
 		Index:      t.IndexName,
 		Body:       &buf,
-		DocumentID: place.ID,
+		DocumentID: strconv.Itoa(place.ID),
 		Refresh:    "true",
 	}
 

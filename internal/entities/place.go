@@ -1,14 +1,13 @@
-package models
+package entities
 
 import (
-	// "PlacesApp/internal"
-	"PlacesApp/internal"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"io/ioutil"
+	"places/internal"
 	"strconv"
 
 	elasticsearch "github.com/elastic/go-elasticsearch/v8"
@@ -52,9 +51,15 @@ func NewPlace(client *elasticsearch.Client) *Place {
 	}
 }
 
+// type TaskRepository interface {
+// 	Create(ctx context.Context, description string, priority internal.Priority, dates internal.Dates) (internal.Task, error)
+// 	Find(ctx context.Context, id string) (internal.Task, error)
+// 	Update(ctx context.Context, id string, description string, priority internal.Priority, dates internal.Dates, isDone bool) error
+// }
+
 // Index creates or updates a place in an index.
 func (t *Place) Index(ctx context.Context, place Place) error {
-	tracer := otel.Tracer("PlacesApp")
+	tracer := otel.Tracer("places")
 	ctx, span := tracer.Start(ctx, "Place.Index")
 	defer span.End()
 

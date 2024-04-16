@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var RegisterPlacesAppRoutes = func(router *mux.Router) {
+var RegisterplacesRoutes = func(router *mux.Router) {
 
 	router.HandleFunc("/places", PlacesHandler) //.Methods("POST")
 	fmt.Println("routes")

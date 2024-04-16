@@ -1,11 +1,11 @@
 package routes
 
 import (
-	"PlacesApp/internal/db/models"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"places/internal/entities"
 
 	"github.com/elastic/go-elasticsearch/v8"
 )
@@ -31,13 +31,13 @@ func PlacesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPlaces(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(models.Places)
+	json.NewEncoder(w).Encode(entities.Places)
 	fmt.Println("get places")
 }
 
 func PostPlace(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("post places")
-	var place models.Place
+	var place entities.Place
 
 	err := json.NewDecoder(r.Body).Decode(&place)
 	if err != nil {
@@ -60,7 +60,7 @@ func PostPlace(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
-	place = *models.NewPlace(client)
+	place = *entities.NewPlace(client)
 	// if place == nil {
 	// 	http.Error(w, "Error creating IndexedPlace", http.StatusInternalServerError)
 	// 	return
@@ -72,7 +72,7 @@ func PostPlace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	models.Places = append(models.Places, place)
+	entities.Places = append(entities.Places, place)
 
 	w.WriteHeader(http.StatusCreated)
 }

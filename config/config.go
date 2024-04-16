@@ -1,9 +1,9 @@
 package config
 
 import (
-	"PlacesApp/internal/routes"
 	"fmt"
 	"net/http"
+	"places/internal/routes"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gorilla/mux"
@@ -25,7 +25,7 @@ func ConnectWithElasticSearch() *elasticsearch.Client {
 
 func ConfigServer() {
 	r := mux.NewRouter()
-	routes.RegisterPlacesAppRoutes(r)
+	routes.RegisterplacesRoutes(r)
 	http.Handle("/", r)
 	fmt.Println("config")
 	http.ListenAndServe("127.0.0.1:8888", r)

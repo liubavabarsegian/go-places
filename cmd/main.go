@@ -1,47 +1,28 @@
 package main
 
 import (
-	"PlacesApp/config"
-	"PlacesApp/internal/domain"
 	"fmt"
 	"log"
+	"places/config"
+	"places/internal/repository"
 )
 
 func main() {
+	log.Printf("Started app\n")
+
 	es := config.ConnectWithElasticSearch()
-
-	data, err := domain.ParseDataFromCsv("config/data.csv")
+	log.Println("Connected with Elastic Search\n")
+	data, err := repository.ParsePlacesFromCsv("config/data.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("Parsed places from data.csv")
 
-	fmt.Println("parsed")
-	// res, err := http.Get("http://localhost:9200")
-
-	// if err != nil {
-	// 	log.Println("couldnt send get request")
-	// }
-
-	// if res != nil {
-	// 	defer res.Body.Close()
-	// 	fmt.Println("Response status:", res.Status)
-	// }
-
-	// res, err = http.Get("http://elasticsearch:9200")
-	// if err != nil {
-	// 	log.Println("couldnt send elastic get request")
-	// }
-	// if res != nil {
-	// 	defer res.Body.Close()
-	// 	fmt.Println("Response status:", res.Status)
-	// }
-
-	// log.Println(res)
-	err = domain.InsertDataToElastic(es, data)
+	err = repository.InsertPlacesIntoElastic(es, data)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("inserted")
+	fmt.Println("Inserted places into Elastic\n")
 
 	config.ConfigServer()
 }

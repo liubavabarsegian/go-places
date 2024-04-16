@@ -1,9 +1,14 @@
 ARG GO_VERSION=1.22
-FROM golang:${GO_VERSION}
 
+FROM golang:${GO_VERSION}
+ENV CGO_ENABLED = 0
+RUN apk update
+RUN apk add --no-cache git gcc
+
+RUN mkdir /app
+ADD . /app/
 # Set the working directory in the container
 WORKDIR /app
-# Copy the Go module files (go.mod and go.sum) to the working directory
 COPY go.mod go.sum ./
 # Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
 RUN go mod download

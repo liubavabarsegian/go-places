@@ -15,7 +15,6 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Println("Connected with Elastic Search")
-	log.Println(es_store.ClassicClient, es_store.TypedClient)
 
 	data, err := repository.ParsePlacesFromCsv(config.PlacesFilePath)
 	if err != nil {
@@ -29,9 +28,8 @@ func main() {
 	}
 	log.Println("success upload files")
 
-	log.Println(es_store.ClassicClient.Get("places", "id"))
 	log.Println(es_store.ClassicClient.Get("places", "1"))
+	log.Println(es_store.ClassicClient.Get("places", "2"))
 
 	config.ConfigServer()
-
 }

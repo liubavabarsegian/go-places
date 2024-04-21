@@ -25,6 +25,11 @@ type ElasticStore struct {
 	TypedClient   *elasticsearch.TypedClient
 }
 
+// const (
+// 	indexName string = "places"
+// 	batch     int    = 250
+// )
+
 func ConnectWithElasticSearch() (*ElasticStore, error) {
 	es_config := elasticsearch.Config{
 		Addresses: []string{
@@ -55,7 +60,6 @@ func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
 
 	IndexExist, err := e.isIndexExist(indexName)
 	if err != nil {
-		// IndexExist = false
 		return 0, err
 	}
 
@@ -152,6 +156,7 @@ func (e ElasticStore) deleteIndex(indexN string) error {
 }
 
 func (e ElasticStore) bulkPlaces(places []entities.Place) (uint64, error) {
+	log.Printf("Attempting to insert %d places\n", len(places))
 	bulkIndexer, err := esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
 		Index:      "places",
 		Client:     e.ClassicClient,
@@ -169,6 +174,7 @@ func (e ElasticStore) bulkPlaces(places []entities.Place) (uint64, error) {
 			return 0, err
 		}
 
+		log.Println(jsonPlace)
 		err = bulkIndexer.Add(
 			context.Background(),
 			esutil.BulkIndexerItem{
@@ -177,7 +183,8 @@ func (e ElasticStore) bulkPlaces(places []entities.Place) (uint64, error) {
 				Body:       bytes.NewReader(jsonPlace),
 			})
 		if err != nil {
-			return 0, err
+			log.Printf("Error adding place to bulk indexer: %v", err)
+			continue
 		}
 	}
 
@@ -185,6 +192,9 @@ func (e ElasticStore) bulkPlaces(places []entities.Place) (uint64, error) {
 	if biStats.NumAdded != uint64(len(places)) {
 		return 0, errors.New(fmt.Sprintf("добавлены не все файлы: %d вместо %d", biStats.NumAdded, len(places)))
 	}
+
+	stats := bulkIndexer.Stats()
+	log.Printf("Bulk indexer stats: %+v", stats)
 
 	return biStats.NumAdded, nil
 }

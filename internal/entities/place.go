@@ -9,13 +9,11 @@ const (
 )
 
 type Place struct {
-	ID       int      `json:"id"`
+	ID       int      `json:""`
 	Name     string   `json:"name"`
 	Address  string   `json:"address"`
 	Phone    string   `json:"phone"`
 	Location GeoPoint `json:"location"`
-	// Client    *elasticsearch.Client
-	// IndexName string
 }
 
 type GeoPoint struct {

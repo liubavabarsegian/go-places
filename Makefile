@@ -3,7 +3,6 @@ NETWORK_NAME := go-places-network
 start:
 	docker-compose build
 	docker-compose up -d
-	make connect-network
 
 stop:
 	docker-compose down
@@ -11,6 +10,11 @@ stop:
 restart:
 	docker-compose down
 	make start
+
+restart_app:
+	docker-compose down go-places-app
+	docker-compose build go-places-app
+	docker-compose up -d go-places-app
 
 create-network:
 	docker-compose down
@@ -24,3 +28,7 @@ create-network:
 connect-network:
 	docker network connect go-places-network go-places-app
 	docker network connect go-places-network go-places-app-elasticsearch-1
+
+mapping:
+	curl -X DELETE "localhost:9200/places"
+	curl -X PUT "localhost:9200/places/_mapping" -H "Content-Type: application/json" -d @config/schema.json

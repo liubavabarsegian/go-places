@@ -1,10 +1,6 @@
 ARG GO_VERSION=1.22
 
 FROM golang:${GO_VERSION}
-ENV CGO_ENABLED = 0
-RUN apk update
-RUN apk add --no-cache git gcc
-
 RUN mkdir /app
 ADD . /app/
 # Set the working directory in the container
@@ -16,6 +12,8 @@ RUN go mod download
 COPY . .
 # Build the Go app
 RUN go build -o  main cmd/main.go
+# # Use the wait-for script as the entrypoint
+# ENTRYPOINT ["wait-for", "elasticsearch:9200", "--", "./main"]
 # Expose port 8888 for the application
 EXPOSE 8888
 # Command to run the executable

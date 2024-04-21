@@ -5,13 +5,15 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"places/internal/entities"
 	"strconv"
 	"time"
 
-	"github.com/dustin/go-humanize"
+	"github.com/gocarina/gocsv"
+
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/pkg/errors"
 )
@@ -33,55 +35,71 @@ var PlacesKey contextKey = contextKey{Key: 1}
 var ClientKey contextKey = contextKey{Key: 2}
 
 func ParsePlacesFromCsv(path string) ([]entities.Place, error) {
-	var data []entities.Place
-
-	f, err := os.Open(path)
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer file.Close()
 
-	csvReader := csv.NewReader(f)
-	csvReader.Comma = '\t'
-	info, err := csvReader.ReadAll()
+	var places []entities.Place
+
+	fmt.Println("what")
+
+	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
+		r := csv.NewReader(in)
+		r.Comma = '\t'
+		return r
+	})
+
+	fmt.Println("is")
+	err = gocsv.Unmarshal(file, &places)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, record := range info[1:] {
-		id, err := strconv.Atoi(record[0])
-		if err != nil {
-			log.Printf("id %s converting error: %s", record[0], err)
-			continue
-		}
-
-		lon, err := strconv.ParseFloat(record[4], 64)
-		if err != nil {
-			log.Printf("id %d latitude converting error: %s", id, err)
-			continue
-		}
-
-		lat, err := strconv.ParseFloat(record[5], 64)
-		if err != nil {
-			log.Printf("id %d longitude converting error: %s", id, err)
-			continue
-		}
-
-		data = append(data, entities.Place{
-			ID:      id + 1,
-			Name:    record[1],
-			Address: record[2],
-			Phone:   record[3],
-			Location: entities.GeoPoint{
-				Longitude: lon,
-				Latitude:  lat}})
-	}
-
-	log.Printf("→ Generated %s places", humanize.Comma(int64(len(data))))
-	return data, nil
+	fmt.Println("happening")
+	return places, err
 }
 
 func InsertPlacesIntoElastic(es *elasticsearch.Client, places []entities.Place) error {
+	// Определение схемы для маппинга
+	// mapping := `{
+	// 	"properties": {
+	// 	  "id": {
+	// 		"type": "long"
+	// 	  },
+	// 	  "name": {
+	// 		"type": "text"
+	// 	  },
+	// 	  "address": {
+	// 		"type": "text"
+	// 	  },
+	// 	  "phone": {
+	// 		"type": "text"
+	// 	  },
+	// 	  "location": {
+	// 		"type": "geo_point"
+	// 	  }
+	// 	}
+	//   }`
+
+	// Добавление маппинга в индекс
+	// Добавление маппинга перед началом индексации данных
+	// if err := addMapping(es, "places", mapping); err != nil {
+	// 	log.Fatalf("Error adding mapping: %s", err)
+	// }
+
+	// res, err := es.Indices.PutMapping(
+	// 	[]string{"places"},
+	// 	strings.NewReader(mapping),
+	// 	es.Indices.PutMapping.WithContext(context.Background()),
+	// 	// es.Indices.PutMapping.WithIncludeTypeName(true),
+	// )
+	// if err != nil {
+	// 	log.Fatalf("Error adding mapping: %s", err)
+	// }
+	// defer res.Body.Close()
+
 	fmt.Print("→ Sending batch ")
 	var buf bytes.Buffer
 	for i, place := range places {
@@ -125,18 +143,34 @@ func InsertPlacesIntoElastic(es *elasticsearch.Client, places []entities.Place) 
 
 				buf.Reset()
 			}
-
-			// if err != nil {
-			// 	log.Println("Failed to index batch after multiple attempts:", err)
-			// 	// Handle the error as needed
-			// }
-			// res, err := es.Bulk(bytes.NewReader(buf.Bytes()), es.Bulk.WithIndex(indexName))
-			// if err != nil {
-			// 	return errors.Wrap(err, "failure indexing batch "+strconv.Itoa(place.ID))
-			// }
-
 		}
 	}
 
 	return nil
 }
+
+// func addMapping(es *elasticsearch.Client, indexName, mapping string) error {
+// 	var buf bytes.Buffer
+// 	buf.WriteString(mapping)
+
+// 	req := esapi.IndicesPutMappingRequest{
+// 		Index: []string{indexName},
+// 		Body:  &buf,
+// 	}
+
+// 	res, err := req.Do(context.Background(), es)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer res.Body.Close()
+
+// 	if res.IsError() {
+// 		var e map[string]interface{}
+// 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+// 			return err
+// 		}
+// 		return errors.New(fmt.Sprintf("Error adding mapping: %s", e["error"].(map[string]interface{})["reason"]))
+// 	}
+
+// 	return nil
+// }

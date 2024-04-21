@@ -5,28 +5,16 @@ import (
 	"net/http"
 	"places/internal/routes"
 
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gorilla/mux"
 )
 
-func ConnectWithElasticSearch() *elasticsearch.Client {
-	es_config := elasticsearch.Config{
-		Addresses: []string{
-			"http://elasticsearch:9200",
-		},
-	}
-	newClient, err := elasticsearch.NewClient(es_config)
-	if err != nil {
-		panic(err)
-	}
-
-	return newClient
-}
+const PlacesFilePath = "/app/config/data.csv"
 
 func ConfigServer() {
 	r := mux.NewRouter()
-	routes.RegisterplacesRoutes(r)
+	routes.RegisterPlacesRoutes(r)
 	http.Handle("/", r)
 	fmt.Println("config")
-	http.ListenAndServe("127.0.0.1:8888", r)
+	http.ListenAndServe("localhost:8888", r)
+	fmt.Println("config")
 }

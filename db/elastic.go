@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"places/config"
 	"places/internal/entities"
 	"strconv"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esutil"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/indices/create"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/some"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/segmentsortorder"
 )
@@ -25,18 +25,12 @@ type ElasticStore struct {
 	TypedClient   *elasticsearch.TypedClient
 }
 
-// const (
-// 	indexName string = "places"
-// 	batch     int    = 250
-// )
-
 func ConnectWithElasticSearch() (*ElasticStore, error) {
 	es_config := elasticsearch.Config{
 		Addresses: []string{
-			"http://elasticsearch:9200",
+			config.ElasticAddress,
 		},
 		RetryBackoff: func(attempt int) time.Duration {
-			// Exponential backoff
 			return time.Duration(attempt) * 100 * time.Millisecond
 		},
 		MaxRetries: 5,
@@ -55,32 +49,24 @@ func ConnectWithElasticSearch() (*ElasticStore, error) {
 }
 
 func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
-
-	indexName := "places"
-
-	IndexExist, err := e.isIndexExist(indexName)
+	IndexExist, err := e.indexExists(config.IndexName)
 	if err != nil {
 		return 0, err
 	}
 
 	if IndexExist {
-		err := e.deleteIndex(indexName)
+		err := e.deleteIndex(config.IndexName)
 		if err != nil {
 			return 0, err
 		}
-		log.Println("delete old index")
-		err = e.createIndex(indexName)
-		if err != nil {
-			return 0, err
-		}
-		log.Println("create new index")
-	} else {
-		err := e.createIndex(indexName)
-		if err != nil {
-			return 0, err
-		}
-		log.Println("create new index")
+		log.Println("deletde old index")
 	}
+
+	err = e.createIndex(config.IndexName)
+	if err != nil {
+		return 0, err
+	}
+	log.Println("created new index")
 
 	indexed, err := e.bulkPlaces(places)
 	if err != nil {
@@ -91,7 +77,7 @@ func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
 	return indexed, nil
 }
 
-func (e ElasticStore) isIndexExist(indexN string) (bool, error) {
+func (e ElasticStore) indexExists(indexN string) (bool, error) {
 	res, err := e.ClassicClient.Indices.Exists([]string{indexN})
 	if res != nil {
 		defer res.Body.Close()
@@ -105,29 +91,28 @@ func (e ElasticStore) isIndexExist(indexN string) (bool, error) {
 
 func (e ElasticStore) createIndex(indexN string) error {
 
-	tmpFile, err := os.ReadFile("/app/config/schema.json")
+	tmpFile, err := os.ReadFile(config.Schema)
 	if err != nil {
 		return err
 	}
 
-	var tmpMap *types.TypeMapping
-	err = json.Unmarshal(tmpFile, &tmpMap)
+	var mapping *types.TypeMapping
+	err = json.Unmarshal(tmpFile, &mapping)
 	if err != nil {
 		return err
 	}
 
 	req := &create.Request{
-		Mappings: tmpMap,
+		Mappings: mapping,
 		Settings: &types.IndexSettings{
-			MaxResultWindow: some.Int(2000),
+			// MaxResultWindow: some.Int(2000),
 			Sort: &types.IndexSegmentSort{
 				Field: []string{"id"},
 				Order: []segmentsortorder.SegmentSortOrder{
 					{Name: "asc"},
 				},
 			},
-			RefreshInterval:  "1s",
-			NumberOfReplicas: "0",
+			RefreshInterval: "1s",
 		},
 	}
 
@@ -174,7 +159,6 @@ func (e ElasticStore) bulkPlaces(places []entities.Place) (uint64, error) {
 			return 0, err
 		}
 
-		log.Println(jsonPlace)
 		err = bulkIndexer.Add(
 			context.Background(),
 			esutil.BulkIndexerItem{

@@ -28,8 +28,8 @@ func main() {
 	}
 	log.Println("success upload files")
 
-	log.Println(es_store.ClassicClient.Get("places", "1"))
-	log.Println(es_store.ClassicClient.Get("places", "2"))
+	places, num, err := es_store.GetPlaces(1000, 100)
+	log.Println(places, num, err)
 
 	config.ConfigServer()
 }

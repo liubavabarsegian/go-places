@@ -2,12 +2,16 @@ package routes
 
 import (
 	"fmt"
-
-	"github.com/gorilla/mux"
+	"net/http"
 )
 
-var RegisterPlacesRoutes = func(router *mux.Router) {
+func RegisterRoutes() *http.ServeMux {
+	mux := http.NewServeMux()
+	RegisterPlacesRoutes(mux)
+	return mux
+}
 
-	router.HandleFunc("/places", PlacesHandler) //.Methods("POST")
-	fmt.Println("Configured routes")
+func RegisterPlacesRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/", GetPlacesHandler)
+	fmt.Println("Registered routes")
 }

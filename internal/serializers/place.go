@@ -23,10 +23,9 @@ type Hit struct {
 }
 
 type PlacePageData struct {
-	PageTitle string
-	Places    []entities.Place
-	Total     int
-	Name      string
-	Address   string
-	Phone     string
+	Places  []entities.Place
+	Total   int
+	Name    string
+	Address string
+	Phone   string
 }

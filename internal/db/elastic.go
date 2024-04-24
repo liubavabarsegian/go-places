@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"places/config"
+	"places/internal/config"
 	"places/internal/entities"
 	"strconv"
 	"time"

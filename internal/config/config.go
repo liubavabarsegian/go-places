@@ -6,13 +6,14 @@ import (
 )
 
 const (
-	PlacesFilePath = "/app/config/data.csv"
+	PlacesFilePath = "/app/internal/config/data.csv"
 	ElasticAddress = "http://elasticsearch:9200"
 	IndexName      = "places"
-	Schema         = "/app/config/schema.json"
+	Schema         = "/app/internal/config/schema.json"
+	AppPort        = ":8888"
 )
 
 func ConfigServer() {
 	router := routes.RegisterRoutes()
-	http.ListenAndServe(":8888", router)
+	http.ListenAndServe(AppPort, router)
 }

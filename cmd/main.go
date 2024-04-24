@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"places/config"
-	"places/db"
+	"places/internal/config"
+	"places/internal/db"
 	"places/internal/repository"
 )
 
@@ -14,7 +14,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Connected with Elastic Search")
 
 	data, err := repository.ParsePlacesFromCsv(config.PlacesFilePath)
 	if err != nil {
@@ -28,7 +27,7 @@ func main() {
 	}
 	log.Println("success upload files")
 
-	places, num, err := es_store.GetPlaces(1000, 100)
+	places, num, err := es_store.GetPlaces(10, 2)
 	log.Println(places, num, err)
 
 	config.ConfigServer()

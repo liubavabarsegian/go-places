@@ -11,18 +11,14 @@ import (
 	"places/internal/config"
 	"places/internal/entities"
 	"strconv"
-	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esutil"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/indices/create"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/segmentsortorder"
 )
 
 type ElasticStore struct {
 	ClassicClient *elasticsearch.Client
-	TypedClient   *elasticsearch.TypedClient
 }
 
 func ConnectWithElasticSearch() (*ElasticStore, error) {
@@ -30,22 +26,21 @@ func ConnectWithElasticSearch() (*ElasticStore, error) {
 		Addresses: []string{
 			config.ElasticAddress,
 		},
-		RetryBackoff: func(attempt int) time.Duration {
-			return time.Duration(attempt) * 100 * time.Millisecond
-		},
-		MaxRetries: 5,
+		Username: "elastic",
+		Password: "123456",
 	}
-	newClient, err := elasticsearch.NewClient(es_config)
+	classicClient, err := elasticsearch.NewClient(es_config)
 	if err != nil {
 		panic(err)
 	}
 
-	newTypedClient, err := elasticsearch.NewTypedClient(es_config)
+	res, err := classicClient.Info()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+	defer res.Body.Close()
 
-	return &ElasticStore{newClient, newTypedClient}, err
+	return &ElasticStore{classicClient}, err
 }
 
 func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
@@ -73,6 +68,11 @@ func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
 		return indexed, err
 	}
 	log.Printf("upload %d places\n", indexed)
+
+	_, err = e.ClassicClient.Indices.Refresh(e.ClassicClient.Indices.Refresh.WithIndex(config.IndexName))
+	if err != nil {
+		log.Println(err)
+	}
 
 	return indexed, nil
 }
@@ -102,31 +102,13 @@ func (e ElasticStore) createIndex(indexN string) error {
 		return err
 	}
 
-	req := &create.Request{
-		Mappings: mapping,
-		Settings: &types.IndexSettings{
-			// MaxResultWindow: some.Int(2000),
-			Sort: &types.IndexSegmentSort{
-				Field: []string{"id"},
-				Order: []segmentsortorder.SegmentSortOrder{
-					{Name: "asc"},
-				},
-			},
-			RefreshInterval: "1s",
-		},
-	}
+	res, err := e.ClassicClient.Indices.Create(indexN)
 
-	res, err := e.TypedClient.Indices.Create(indexN).
-		Request(req).
-		Do(nil)
-
+	log.Println(res)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot create index: %s", err))
 	}
 
-	if !res.Acknowledged && res.Index != indexN {
-		return errors.New(fmt.Sprintf("unexpected error during index creation, got : %#v", res))
-	}
 	return nil
 }
 

@@ -2,20 +2,42 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"log"
+	"places/internal/config"
 	"places/internal/entities"
-
-	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 )
 
 type Store interface {
 	GetPlaces(limit int, offset int) ([]entities.Place, int, error)
 }
 
-func (s ElasticStore) GetPlaces(limit int, offset int) ([]entities.Place, int, error) {
-	fmt.Println("AAA")
+type searchRequestParams struct {
+	Took    float64 `json:"took"`
+	Timeout bool    `json:"timed_out"`
+	Shards  struct {
+		Total      int64 `json:"total"`
+		Successful int64 `json:"successful"`
+		Skipped    int64 `json:"skipped"`
+		Failed     int64 `json:"failed"`
+	} `json:"_shards"`
+	Hits struct {
+		Total struct {
+			Value    int64  `json:"value"`
+			Relation string `json:"relation"`
+		} `json:"total"`
+		MaxScore float64 `json:"max_score"`
+		Hits     []struct {
+			Index  string          `json:"_index"`
+			Id     string          `json:"_id"`
+			Score  float64         `json:"_score"`
+			Source *entities.Place `json:"_source"`
+		} `json:"hits"`
+	} `json:"hits"`
+}
+
+func (e ElasticStore) GetPlaces(limit int, offset int) ([]entities.Place, int, error) {
 	if limit <= 0 {
 		return nil, 0, errors.New("limit must be > 0")
 	}
@@ -23,80 +45,32 @@ func (s ElasticStore) GetPlaces(limit int, offset int) ([]entities.Place, int, e
 		return nil, 0, errors.New("offset must be >= 0")
 	}
 
-	fmt.Println("BBBB")
-	// query := map[string]interface{}{
-	// 	"query": map[string]interface{}{
-	// 		"match_all": map[string]interface{}{},
-	// 	},
-	// }
+	response, err := e.ClassicClient.Search(
+		e.ClassicClient.Search.WithContext(context.Background()),
+		e.ClassicClient.Search.WithIndex(config.IndexName),
+		e.ClassicClient.Search.WithFrom(offset),
+		e.ClassicClient.Search.WithSize(10),
+		e.ClassicClient.Search.WithSort("ID:asc"),
+		e.ClassicClient.Search.WithTrackTotalHits(true),
+		e.ClassicClient.Search.WithPretty(),
+	)
 
-	// var buf bytes.Buffer
-	// if err := json.NewEncoder(&buf).Encode(query); err != nil {
-	// 	return nil, 0, err
-	// }
-
-	qry := &search.Request{
-		Size: &limit,
-		From: &offset,
-		Query: &types.Query{
-			MatchAll: &types.MatchAllQuery{Boost: nil, QueryName_: nil},
-		},
-		TrackTotalHits: true,
-	}
-	// log.Printf("Sending query to Elasticsearch: %s", buf.String())
-
-	res, err := s.TypedClient.Search().Index("places").Request(qry).Do(context.Background())
-	// s.ClassicClient.Search.WithIndex("places"),
-	// // s.ClassicClient.Search.WithFrom(offset),
-	// s.ClassicClient.Search.WithSize(3),
-	// s.ClassicClient.Search.WithPretty(),
-	// s.ClassicClient.Search.WithBody(&buf),
-	// s.ClassicClient.Search.WithTrackTotalHits(true),
-	// s.ClassicClient.Search.WithContext(context.Background()),
-
-	fmt.Println(res)
+	var respParams searchRequestParams
+	err = json.NewDecoder(response.Body).Decode(&respParams)
 	if err != nil {
 		return nil, 0, err
 	}
-	// if res.IsError() {
-	// 	// Log the error message for debugging
-	// 	log.Printf("Error in Elasticsearch operation: %s", res.Status())
-	// 	return nil, 0, errors.New("Elasticsearch operation error")
-	// }
 
-	// defer res.Body.Close()
+	var places []entities.Place
+	if respParams.Hits.Total.Value > 0 {
+		for _, hit := range respParams.Hits.Hits {
+			if hit.Source == nil {
+				log.Printf("hit with %s have nil Source", hit.Id)
+				continue
+			}
+			places = append(places, *hit.Source)
+		}
+	}
 
-	// var response map[string]interface{}
-	// if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-	// 	return nil, 0, err
-	// }
-
-	// // Log the raw response from Elasticsearch
-	// log.Printf("Raw response from Elasticsearch: %+v", response)
-
-	// hits, found := response["hits"].(map[string]interface{})
-	// if !found {
-	// 	return nil, 0, errors.New("No hits found in response")
-	// }
-
-	// totalHits, _ := hits["total"].(map[string]interface{})["value"].(float64)
-	// var places []entities.Place
-
-	// if int(totalHits) > 0 {
-	// 	for _, hit := range hits["hits"].([]interface{}) {
-	// 		source := hit.(map[string]interface{})["_source"]
-	// 		place := entities.Place{} // You need to define your Place type
-	// 		placeBytes, err := json.Marshal(source)
-	// 		if err != nil {
-	// 			return nil, 0, err
-	// 		}
-	// 		if err := json.Unmarshal(placeBytes, &place); err != nil {
-	// 			return nil, 0, err
-	// 		}
-	// 		places = append(places, place)
-	// 	}
-	// }
-
-	// return places, int(totalHits), nil
-	return nil, 0, nil
+	return places, int(respParams.Hits.Total.Value), nil
 }

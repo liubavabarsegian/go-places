@@ -2,19 +2,18 @@ package routes
 
 import (
 	"net/http"
-	"places/internal/entities"
+	"places/internal/db"
 	"places/internal/serializers"
 	"text/template"
 )
 
-func GetPlacesHandler(w http.ResponseWriter, r *http.Request) {
+func GetPlacesHandler(w http.ResponseWriter, r *http.Request, esStore *db.ElasticStore) {
 	tmpl := template.Must(template.ParseFiles("/app/internal/templates/index.gohtml"))
-	data := serializers.PlacePageData{
-		Places: []entities.Place{
-			{ID: 1, Name: "aaA", Address: "kargina", Phone: "+7"},
-			{ID: 2, Name: "aaa"},
-			{ID: 3, Name: "true"},
-		},
+	data, _, _ := esStore.GetPlaces(10, 10)
+
+	response := serializers.GetPlacesResponse{
+		Total:  10,
+		Places: data,
 	}
-	tmpl.Execute(w, data)
+	tmpl.Execute(w, response)
 }

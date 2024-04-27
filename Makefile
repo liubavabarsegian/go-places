@@ -3,6 +3,7 @@ NETWORK_NAME := go-places-network
 start:
 	docker-compose build
 	docker-compose up -d
+	update_index_settings:
 
 stop:
 	docker-compose down
@@ -32,3 +33,6 @@ connect-network:
 mapping:
 	curl -X DELETE "localhost:9200/places"
 	curl -X PUT "localhost:9200/places/_mapping" -H "Content-Type: application/json" -d @config/schema.json
+
+update_index_settings:
+	curl -XPUT -H "Content-Type: application/json" "http://localhost:9200/places/_settings" -d '{"index" : {"max_result_window" : 20000}}'

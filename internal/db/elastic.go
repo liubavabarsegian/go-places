@@ -67,7 +67,6 @@ func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
 	if err != nil {
 		return indexed, err
 	}
-	log.Printf("upload %d places\n", indexed)
 
 	_, err = e.ClassicClient.Indices.Refresh(e.ClassicClient.Indices.Refresh.WithIndex(config.IndexName))
 	if err != nil {
@@ -102,9 +101,8 @@ func (e ElasticStore) createIndex(indexN string) error {
 		return err
 	}
 
-	res, err := e.ClassicClient.Indices.Create(indexN)
+	_, err = e.ClassicClient.Indices.Create(indexN)
 
-	log.Println(res)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot create index: %s", err))
 	}

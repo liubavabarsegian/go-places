@@ -13,7 +13,7 @@ type Store interface {
 	GetPlaces(limit int, offset int) ([]entities.Place, int, error)
 }
 
-type searchRequestParams struct {
+type searchResponse struct {
 	Took    float64 `json:"took"`
 	Timeout bool    `json:"timed_out"`
 	Shards  struct {
@@ -55,15 +55,15 @@ func (e ElasticStore) GetPlaces(limit int, offset int) ([]entities.Place, int, e
 		e.ClassicClient.Search.WithPretty(),
 	)
 
-	var respParams searchRequestParams
-	err = json.NewDecoder(response.Body).Decode(&respParams)
+	var responseParams searchResponse
+	err = json.NewDecoder(response.Body).Decode(&responseParams)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	var places []entities.Place
-	if respParams.Hits.Total.Value > 0 {
-		for _, hit := range respParams.Hits.Hits {
+	if responseParams.Hits.Total.Value > 0 {
+		for _, hit := range responseParams.Hits.Hits {
 			if hit.Source == nil {
 				log.Printf("hit with %s have nil Source", hit.Id)
 				continue
@@ -72,5 +72,5 @@ func (e ElasticStore) GetPlaces(limit int, offset int) ([]entities.Place, int, e
 		}
 	}
 
-	return places, int(respParams.Hits.Total.Value), nil
+	return places, int(responseParams.Hits.Total.Value), nil
 }

@@ -34,7 +34,7 @@ func New(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
 
 		pageParam := r.URL.Query().Get("page")
 		page, _ := strconv.Atoi(pageParam)
-		logger.Info("Requested page №", page)
+		logger.Info("Requested page №", pageParam)
 
 		limit := 10
 		offset := (page - 1) * limit

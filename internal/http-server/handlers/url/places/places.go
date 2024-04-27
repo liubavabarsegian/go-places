@@ -1,15 +1,13 @@
 package places
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"places/internal/entities"
 	response "places/internal/lib/api/response"
 	"places/internal/storage"
-	"text/template"
+	"strconv"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
@@ -17,7 +15,7 @@ import (
 
 type Request struct {
 	URL  string `json:"url"`
-	Page int    `json:"page,omitempty"`
+	Page string `json:"page,omitempty"`
 }
 
 type Response struct {
@@ -32,55 +30,50 @@ type Response struct {
 
 func New(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.url.root.New"
+		const op = "handlers.url.places.New"
 
 		logger = logger.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-		var req Request
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-			logger.Error("Request body is empty")
-			render.JSON(w, r, response.Error("Empty request"))
-			return
-		}
-		if err != nil {
-			logger.Error("Failed to decode request body", err)
-			render.JSON(w, r, response.Error("Failed to decode request"))
-			return
-		}
-
-		page := req.Page
-		// page, _ := strconv.Atoi(pageParam)
-		logger.Info("Requested page №", page)
+		pageParam := r.URL.Query().Get("page")
+		page, _ := strconv.Atoi(pageParam)
+		logger.Info("Requested page №", pageParam)
 
 		limit := 10
 		offset := (page - 1) * limit
-
-		tmpl := template.Must(template.ParseFiles("/app/internal/templates/index.gohtml"))
 		data, total, _ := esStore.GetPlaces(limit, offset)
 
 		if page < 1 || page > total {
-			w.WriteHeader(400)
-			http.Error(w, fmt.Sprintf("Invalid 'page' value: '%v'", page), http.StatusBadRequest)
+			render.JSON(w, r, response.Error(fmt.Sprintf("Invalid 'page' value: '%v'", page)))
 			return
 		}
 
-		response := Response{
+		responseParams := Response{
 			Total:  total,
 			Places: data,
 		}
 		if offset > 0 {
-			response.PrevPage = page - 1
+			responseParams.PrevPage = page - 1
 		}
-
 		if offset+limit < total {
-			response.NextPage = page + 1
+			responseParams.NextPage = page + 1
 		}
+		responseParams.LastPage = (total + limit - 1) / limit
 
-		response.LastPage = (total + limit - 1) / limit
-		tmpl.Execute(w, response)
+		responseOK(w, r, &responseParams)
 	}
+}
+
+func responseOK(w http.ResponseWriter, r *http.Request, responseParams *Response) {
+	render.JSON(w, r, Response{
+		Response: response.OK(),
+		Total:    responseParams.Total,
+		Name:     responseParams.Name,
+		Places:   responseParams.Places,
+		PrevPage: responseParams.PrevPage,
+		NextPage: responseParams.NextPage,
+		LastPage: responseParams.LastPage,
+	})
 }

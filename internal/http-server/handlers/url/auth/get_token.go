@@ -8,11 +8,11 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
+var SecretKey = []byte("SecretYouShouldHide")
+
 type GenerateJWTResponse struct {
 	Token string `json:"token"`
 }
-
-var sampleSecretKey = []byte("SecretYouShouldHide")
 
 func GetToken(logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func GetToken(logger *slog.Logger) http.HandlerFunc {
 
 func generateJWT() (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
-	tokenString, err := token.SignedString(sampleSecretKey)
+	tokenString, err := token.SignedString(SecretKey)
 	if err != nil {
 		return "", err
 	}

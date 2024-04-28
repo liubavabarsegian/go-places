@@ -6,6 +6,7 @@ import (
 	"places/internal/http-server/handlers/url/places"
 	"places/internal/http-server/handlers/url/recommend"
 	"places/internal/http-server/handlers/url/root"
+	jwt_middleware "places/internal/http-server/middleware/jwt_middleware"
 
 	"places/internal/storage"
 
@@ -17,8 +18,8 @@ import (
 func RegisterPlacesRoutes(esStore *storage.ElasticStore, router *chi.Mux, logger *slog.Logger) {
 	router.Get("/", root.GetPlaces(esStore, logger))
 	router.Get("/api/places", places.GetPlaces(esStore, logger))
-	router.Get("/api/recommend", recommend.GetClosestPlaces(esStore, logger))
 	router.Get("/api/get_token", auth.GetToken(logger))
+	router.Get("/api/recommend", jwt_middleware.JWTMiddleware(recommend.GetClosestPlaces(esStore, logger)))
 
 	logger.Info("Registered routes")
 }

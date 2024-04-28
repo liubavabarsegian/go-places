@@ -19,7 +19,7 @@ func main() {
 	}
 	logger.Info("Connected with ElasticSearch")
 
-	data, err := repository.ParsePlacesFromCsv(config.PlacesFilePath)
+	data, err := repository.ParsePlacesFromCsv(config.PlacesFilePath, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,6 +30,7 @@ func main() {
 		log.Fatal(err)
 	}
 	logger.Info("Inserted data into ElasticSearch")
+	log.Println(data)
 
 	router := router.SetUpRouter(esStore, logger)
 

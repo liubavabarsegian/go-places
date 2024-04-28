@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"places/internal/config"
 	"places/internal/entities"
 	response "places/internal/lib/api/response"
 	"places/internal/storage"
@@ -13,13 +14,7 @@ import (
 	"github.com/go-chi/render"
 )
 
-type Request struct {
-	URL  string `json:"url"`
-	Page string `json:"page,omitempty"`
-}
-
 type Response struct {
-	response.Response
 	Name     string           `json:"name"`
 	Total    int              `json:"total"`
 	Places   []entities.Place `json:"places"`
@@ -28,9 +23,9 @@ type Response struct {
 	LastPage int              `json:"last_page"`
 }
 
-func New(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
+func GetPlaces(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.url.places.New"
+		const op = "handlers.url.places.GetPlaces"
 
 		logger = logger.With(
 			slog.String("op", op),
@@ -43,7 +38,7 @@ func New(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
 
 		limit := 10
 		offset := (page - 1) * limit
-		data, total, _ := esStore.GetPlaces(limit, offset)
+		data, total, _ := esStore.GetPlaces(limit, offset, logger)
 
 		if page < 1 || page > total {
 			render.JSON(w, r, response.Error(fmt.Sprintf("Invalid 'page' value: '%v'", page)))
@@ -68,9 +63,8 @@ func New(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
 
 func responseOK(w http.ResponseWriter, r *http.Request, responseParams *Response) {
 	render.JSON(w, r, Response{
-		Response: response.OK(),
 		Total:    responseParams.Total,
-		Name:     responseParams.Name,
+		Name:     config.IndexName,
 		Places:   responseParams.Places,
 		PrevPage: responseParams.PrevPage,
 		NextPage: responseParams.NextPage,

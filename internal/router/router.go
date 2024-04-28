@@ -3,6 +3,7 @@ package router
 import (
 	"log/slog"
 	"places/internal/http-server/handlers/url/places"
+	"places/internal/http-server/handlers/url/recommend"
 	"places/internal/http-server/handlers/url/root"
 	"places/internal/storage"
 
@@ -11,8 +12,10 @@ import (
 )
 
 func RegisterPlacesRoutes(esStore *storage.ElasticStore, router *chi.Mux, logger *slog.Logger) {
-	router.Get("/", root.New(esStore, logger))
-	router.Get("/api/places", places.New(esStore, logger))
+	router.Get("/", root.GetPlaces(esStore, logger))
+	router.Get("/api/places", places.GetPlaces(esStore, logger))
+	router.Get("/api/recommend", recommend.GetClosestPlaces(esStore, logger))
+
 	logger.Info("Registered routes")
 }
 

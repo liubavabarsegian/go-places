@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"log/slog"
 	"places/internal/config"
 	"places/internal/entities"
+	"strings"
 )
 
 type Store interface {
@@ -37,7 +39,7 @@ type searchResponse struct {
 	} `json:"hits"`
 }
 
-func (e ElasticStore) GetPlaces(limit int, offset int) ([]entities.Place, int, error) {
+func (e ElasticStore) GetPlaces(limit int, offset int, logger *slog.Logger) ([]entities.Place, int, error) {
 	if limit <= 0 {
 		return nil, 0, errors.New("limit must be > 0")
 	}
@@ -52,6 +54,59 @@ func (e ElasticStore) GetPlaces(limit int, offset int) ([]entities.Place, int, e
 		e.ClassicClient.Search.WithSize(10),
 		e.ClassicClient.Search.WithSort("ID:asc"),
 		e.ClassicClient.Search.WithTrackTotalHits(true),
+		e.ClassicClient.Search.WithPretty(),
+	)
+
+	var responseParams searchResponse
+	err = json.NewDecoder(response.Body).Decode(&responseParams)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var places []entities.Place
+	if responseParams.Hits.Total.Value > 0 {
+		for _, hit := range responseParams.Hits.Hits {
+			if hit.Source == nil {
+				logger.Info("hit with %s have nil Source", hit.Id)
+				continue
+			}
+			places = append(places, *hit.Source)
+		}
+	}
+
+	return places, int(responseParams.Hits.Total.Value), nil
+}
+
+func (e ElasticStore) GetClosestPlaces(longitude float64, latitude float64, logger *slog.Logger) ([]entities.Place, int, error) {
+	query := map[string]interface{}{
+		"sort": []map[string]interface{}{
+			{
+				"_geo_distance": map[string]interface{}{
+					"location": map[string]interface{}{
+						"lat": latitude,
+						"lon": longitude,
+					},
+					"order":           "asc",
+					"unit":            "km",
+					"mode":            "min",
+					"distance_type":   "arc",
+					"ignore_unmapped": true,
+				},
+			},
+		},
+	}
+
+	queryBytes, err := json.Marshal(query)
+	if err != nil {
+		logger.Error("Error ocurred while marshalling query")
+		return nil, 0, err
+	}
+
+	response, err := e.ClassicClient.Search(
+		e.ClassicClient.Search.WithContext(context.Background()),
+		e.ClassicClient.Search.WithIndex(config.IndexName),
+		e.ClassicClient.Search.WithSize(3),
+		e.ClassicClient.Search.WithBody(strings.NewReader(string(queryBytes))),
 		e.ClassicClient.Search.WithPretty(),
 	)
 

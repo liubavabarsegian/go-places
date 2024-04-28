@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"places/internal/entities"
-	response "places/internal/lib/api/response"
 	"places/internal/storage"
 	"strconv"
 	"text/template"
@@ -14,7 +13,6 @@ import (
 )
 
 type Response struct {
-	response.Response
 	Name     string           `json:"name"`
 	Total    int              `json:"total"`
 	Places   []entities.Place `json:"places"`
@@ -23,9 +21,9 @@ type Response struct {
 	LastPage int              `json:"last_page"`
 }
 
-func New(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
+func GetPlaces(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.url.root.New"
+		const op = "handlers.url.root.GetPlaces"
 
 		logger = logger.With(
 			slog.String("op", op),
@@ -40,7 +38,7 @@ func New(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerFunc {
 		offset := (page - 1) * limit
 
 		tmpl := template.Must(template.ParseFiles("/app/internal/templates/index.gohtml"))
-		data, total, _ := esStore.GetPlaces(limit, offset)
+		data, total, _ := esStore.GetPlaces(limit, offset, logger)
 
 		if page < 1 || page > total {
 			w.WriteHeader(400)

@@ -30,9 +30,7 @@ func main() {
 		log.Fatal(err)
 	}
 	logger.Info("Inserted data into ElasticSearch")
-	log.Println(data)
 
 	router := router.SetUpRouter(esStore, logger)
-
 	http.ListenAndServe(config.AppPort, router)
 }

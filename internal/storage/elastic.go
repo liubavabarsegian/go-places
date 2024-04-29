@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"places/internal/config"
 	"places/internal/entities"
@@ -21,7 +20,7 @@ type ElasticStore struct {
 	ClassicClient *elasticsearch.Client
 }
 
-func ConnectWithElasticSearch() (*ElasticStore, error) {
+func ConnectWithElasticSearch(logger *slog.Logger) (*ElasticStore, error) {
 	es_config := elasticsearch.Config{
 		Addresses: []string{
 			config.ElasticAddress,
@@ -31,11 +30,13 @@ func ConnectWithElasticSearch() (*ElasticStore, error) {
 	}
 	classicClient, err := elasticsearch.NewClient(es_config)
 	if err != nil {
-		panic(err)
+		logger.Error("Error while creating new client %s", err)
+		return nil, err
 	}
 
 	res, err := classicClient.Info()
 	if err != nil {
+		logger.Error("Error while getting client info %s", err)
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -43,7 +44,7 @@ func ConnectWithElasticSearch() (*ElasticStore, error) {
 	return &ElasticStore{classicClient}, err
 }
 
-func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
+func (e ElasticStore) InsertPlaces(places []entities.Place, logger *slog.Logger) (uint64, error) {
 	IndexExist, err := e.indexExists(config.IndexName)
 	if err != nil {
 		return 0, err
@@ -54,14 +55,14 @@ func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
 		if err != nil {
 			return 0, err
 		}
-		log.Println("deletde old index")
+		logger.Info("Deleted old index")
 	}
 
 	err = e.createIndex(config.IndexName)
 	if err != nil {
 		return 0, err
 	}
-	log.Println("created new index")
+	logger.Info("Created new index")
 
 	indexed, err := e.bulkPlaces(places)
 	if err != nil {
@@ -70,7 +71,7 @@ func (e ElasticStore) InsertPlaces(places []entities.Place) (uint64, error) {
 
 	_, err = e.ClassicClient.Indices.Refresh(e.ClassicClient.Indices.Refresh.WithIndex(config.IndexName))
 	if err != nil {
-		log.Println(err)
+		logger.Error("Error while refreshing index %s", err)
 	}
 
 	return indexed, nil
@@ -83,7 +84,7 @@ func (e ElasticStore) indexExists(indexN string) (bool, error) {
 	}
 
 	if err != nil {
-		return false, errors.New(fmt.Sprintf("Cannot check index exists: %s", err))
+		return false, err
 	}
 	return !res.IsError(), nil
 }
@@ -104,7 +105,7 @@ func (e ElasticStore) createIndex(indexN string) error {
 	_, err = e.ClassicClient.Indices.Create(indexN)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Cannot create index: %s", err))
+		return err
 	}
 
 	return nil
@@ -113,7 +114,7 @@ func (e ElasticStore) createIndex(indexN string) error {
 func (e ElasticStore) deleteIndex(indexN string) error {
 	res, err := e.ClassicClient.Indices.Delete([]string{indexN}, e.ClassicClient.Indices.Delete.WithIgnoreUnavailable(true))
 	if err != nil || res.IsError() {
-		log.Fatalf("Cannot delete index: %s", err)
+		return err
 	}
 	res.Body.Close()
 
@@ -154,7 +155,7 @@ func (e ElasticStore) bulkPlaces(places []entities.Place) (uint64, error) {
 
 	biStats := bulkIndexer.Stats()
 	if biStats.NumAdded != uint64(len(places)) {
-		return 0, errors.New(fmt.Sprintf("добавлены не все файлы: %d вместо %d", biStats.NumAdded, len(places)))
+		return 0, err
 	}
 
 	stats := bulkIndexer.Stats()

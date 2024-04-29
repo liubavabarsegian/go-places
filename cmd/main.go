@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"places/internal/config"
 	"places/internal/repository"
@@ -13,21 +13,22 @@ func main() {
 	logger := config.SetUpLogger("dev")
 	logger.Info("Starting the server")
 
-	esStore, err := storage.ConnectWithElasticSearch()
+	esStore, err := storage.ConnectWithElasticSearch(logger)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(fmt.Sprintf("Error while connecting with ES: %s", err))
+		return
 	}
 	logger.Info("Connected with ElasticSearch")
 
 	data, err := repository.ParsePlacesFromCsv(config.PlacesFilePath, logger)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(fmt.Sprintf("Error while parsing data from CSV: %s", err))
 	}
 	logger.Info("Parsed places from CSV")
 
-	_, err = esStore.InsertPlaces(data)
+	_, err = esStore.InsertPlaces(data, logger)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(fmt.Sprintf("Error while inserting data: %s", err))
 	}
 	logger.Info("Inserted data into ElasticSearch")
 

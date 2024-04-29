@@ -14,6 +14,11 @@ import (
 	"github.com/go-chi/render"
 )
 
+type Request struct {
+	URL  string `json:"url"`
+	Page string `json:"page,omitempty"`
+}
+
 type Response struct {
 	Name     string           `json:"name"`
 	Total    int              `json:"total"`
@@ -34,7 +39,7 @@ func GetPlaces(esStore *storage.ElasticStore, logger *slog.Logger) http.HandlerF
 
 		pageParam := r.URL.Query().Get("page")
 		page, _ := strconv.Atoi(pageParam)
-		logger.Info("Requested page №", pageParam)
+		logger.Info(fmt.Sprintf("Requested page № %s", pageParam))
 
 		limit := 10
 		offset := (page - 1) * limit

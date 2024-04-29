@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"log/slog"
 	"places/internal/config"
 	"places/internal/entities"
@@ -52,10 +52,14 @@ func (e ElasticStore) GetPlaces(limit int, offset int, logger *slog.Logger) ([]e
 		e.ClassicClient.Search.WithIndex(config.IndexName),
 		e.ClassicClient.Search.WithFrom(offset),
 		e.ClassicClient.Search.WithSize(10),
-		e.ClassicClient.Search.WithSort("ID:asc"),
 		e.ClassicClient.Search.WithTrackTotalHits(true),
 		e.ClassicClient.Search.WithPretty(),
 	)
+
+	if err != nil {
+		logger.Error("Error while searching places")
+		return nil, 0, err
+	}
 
 	var responseParams searchResponse
 	err = json.NewDecoder(response.Body).Decode(&responseParams)
@@ -67,7 +71,7 @@ func (e ElasticStore) GetPlaces(limit int, offset int, logger *slog.Logger) ([]e
 	if responseParams.Hits.Total.Value > 0 {
 		for _, hit := range responseParams.Hits.Hits {
 			if hit.Source == nil {
-				logger.Info("hit with %s have nil Source", hit.Id)
+				logger.Info(fmt.Sprintf("hit with %s have nil Source", hit.Id))
 				continue
 			}
 			places = append(places, *hit.Source)
@@ -110,6 +114,11 @@ func (e ElasticStore) GetClosestPlaces(longitude float64, latitude float64, logg
 		e.ClassicClient.Search.WithPretty(),
 	)
 
+	if err != nil {
+		logger.Error("Error while searching the closest places")
+		return nil, 0, err
+	}
+
 	var responseParams searchResponse
 	err = json.NewDecoder(response.Body).Decode(&responseParams)
 	if err != nil {
@@ -120,7 +129,7 @@ func (e ElasticStore) GetClosestPlaces(longitude float64, latitude float64, logg
 	if responseParams.Hits.Total.Value > 0 {
 		for _, hit := range responseParams.Hits.Hits {
 			if hit.Source == nil {
-				log.Printf("hit with %s have nil Source", hit.Id)
+				logger.Info(fmt.Sprintf("hit with %s have nil Source", hit.Id))
 				continue
 			}
 			places = append(places, *hit.Source)

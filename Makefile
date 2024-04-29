@@ -3,7 +3,7 @@ NETWORK_NAME := go-places-network
 start:
 	docker-compose build
 	docker-compose up -d
-	update_index_settings:
+	make update_index_settings
 
 stop:
 	docker-compose down
